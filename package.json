@@ -1,0 +1,41 @@
+{
+  "name": "@dsh-desktop/dsh-workbench",
+  "description": "Custom dashboard/workbench plugin: save chat-generated dashboards (markdown/metrics/table/text widgets) and browse them from a sidebar + session-header entry. Persistent across restarts.",
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ],
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6",
+    "react": "^18.2.0"
+  },
+  "files": [
+    "lib/**/*.js",
+    "standalone/**",
+    "cordis.patch.yml"
+  ],
+  "license": "MIT"
+}
