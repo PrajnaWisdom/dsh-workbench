@@ -3,7 +3,7 @@
  *
  * 两种运行方式：
  * 1) 服务端托管（插件内）：通过 /api/dsh-workbench/* 取真实数据，
- *    支持「列表 → 详情」、返回、在新窗口打开、删除。
+ *    支持「列表 → 详情」、返回、删除、上移/下移排序。
  * 2) 本地离线预览（双击 index.html）：若 window.DASHBOARD 有数据
  *    则直接渲染示例，方便不改服务就调样式。
  * ============================================================ */
@@ -230,7 +230,7 @@
       empty.innerHTML = '<p>还没有看板</p><p>在对话里告诉助手「把刚才的分析做成看板保存」，保存后会自动出现在这里。</p>';
       list.appendChild(empty);
     } else {
-      dashboards.forEach(function (d) {
+      dashboards.forEach(function (d, i) {
         var isToken = d.type === 'token';
         var item = document.createElement('div');
         item.className = 'wbk-item' + (isToken ? ' wbk-item-builtin' : '');
@@ -258,6 +258,27 @@
         var actions = document.createElement('div');
         actions.className = 'wbk-item-actions';
         if (!IS_OFFLINE) {
+          var isFirst = i === 0;
+          var isLast = i === dashboards.length - 1;
+
+          var up = btn('↑', false, function (ev) {
+            ev.stopPropagation();
+            api('/api/dsh-workbench/move?id=' + encodeURIComponent(d.id) + '&dir=up').then(function () { refresh(); }).catch(function () { refresh(); });
+          });
+          up.classList.add('wbk-btn-move');
+          up.title = '上移';
+          up.disabled = isFirst;
+          actions.appendChild(up);
+
+          var down = btn('↓', false, function (ev) {
+            ev.stopPropagation();
+            api('/api/dsh-workbench/move?id=' + encodeURIComponent(d.id) + '&dir=down').then(function () { refresh(); }).catch(function () { refresh(); });
+          });
+          down.classList.add('wbk-btn-move');
+          down.title = '下移';
+          down.disabled = isLast;
+          actions.appendChild(down);
+
           var del = btn('删除', false, function (ev) {
             ev.stopPropagation();
             if (!confirm('删除看板「' + d.title + '」？')) return;

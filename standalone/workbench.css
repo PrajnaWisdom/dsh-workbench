@@ -74,10 +74,14 @@ body {
   cursor: pointer;
   font: inherit;
   font-size: 13px;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 .wbk-btn:hover { border-color: var(--wb-brand); color: var(--wb-brand); }
+.wbk-btn:disabled { cursor: default; opacity: 0.35; }
+.wbk-btn:disabled:hover { border-color: var(--wb-border); color: var(--wb-text); }
 .wbk-btn-primary { border-color: var(--wb-brand); color: var(--wb-brand); }
 .wbk-btn-danger { color: var(--wb-error); }
+.wbk-btn-move { padding: 5px 8px; font-size: 12px; line-height: 1; }
 
 /* —— 页面标题 / 描述 —— */
 .wbk-page-title { margin: 0 0 4px; font-size: 22px; font-weight: 700; }
@@ -94,8 +98,13 @@ body {
   border-radius: var(--wb-radius);
   padding: 12px 14px;
   cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
-.wbk-item:hover { border-color: var(--wb-brand); }
+.wbk-item:hover {
+  border-color: var(--wb-brand);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
 .wbk-item-main { flex: 1; min-width: 0; }
 .wbk-item-title { font-weight: 600; margin-bottom: 2px; }
 .wbk-item-desc { color: var(--wb-text-2); font-size: 12px; margin-bottom: 4px; }
@@ -104,10 +113,13 @@ body {
 
 .wbk-empty {
   color: var(--wb-text-2);
-  padding: 40px 8px;
+  padding: 40px 16px;
   text-align: center;
   font-size: 13px;
   line-height: 1.9;
+  border: 1px dashed var(--wb-border);
+  border-radius: var(--wb-radius);
+  background: var(--wb-surface);
 }
 .wbk-error { color: var(--wb-error); padding: 8px 0; font-size: 13px; }
 
@@ -137,7 +149,17 @@ body {
 
 /* —— metrics —— */
 .wbk-metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
-.wbk-metric { background: var(--wb-surface-2); border-radius: var(--wb-radius); padding: 12px 10px; text-align: center; }
+.wbk-metric {
+  background: var(--wb-surface-2);
+  border-radius: var(--wb-radius);
+  padding: 14px 10px;
+  text-align: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.wbk-metric:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
 .wbk-metric-value { display: block; font-size: 20px; font-weight: 700; color: var(--wb-brand); }
 .wbk-metric-label { display: block; margin-top: 4px; font-size: 12px; color: var(--wb-text-2); }
 
@@ -150,7 +172,10 @@ body {
 .wbk-text { white-space: pre-wrap; font-size: 13px; }
 
 /* —— 内置看板条目 —— */
-.wbk-item-builtin { border-color: var(--wb-brand); }
+.wbk-item-builtin {
+  border-color: var(--wb-brand);
+  box-shadow: inset 3px 0 0 var(--wb-brand);
+}
 .wbk-item-badge {
   flex: none;
   align-self: flex-start;
