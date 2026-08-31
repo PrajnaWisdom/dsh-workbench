@@ -1,0 +1,170 @@
+/* ============================================================
+ * workbench.css — 看板样式（改配色/布局只动这里）
+ *
+ * 主题色集中在下方 :root 变量，改一处全局生效；支持深浅色。
+ * 同时被「当前窗口视图」和「新窗口页面」加载（同一份文件）。
+ * ============================================================ */
+
+:root {
+  --wb-bg: #ffffff;
+  --wb-surface: #f7f8fa;
+  --wb-surface-2: #eef0f3;
+  --wb-border: #e5e7eb;
+  --wb-text: #1f2328;
+  --wb-text-2: #656d76;
+  --wb-brand: #4c6fff;
+  --wb-error: #d1242f;
+  --wb-radius: 8px;
+  --wb-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --wb-bg: #17191d;
+    --wb-surface: #1f2227;
+    --wb-surface-2: #282c33;
+    --wb-border: #2f333a;
+    --wb-text: #e6e8eb;
+    --wb-text-2: #9aa1a9;
+    --wb-brand: #6c8cff;
+    --wb-error: #f47067;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--wb-bg);
+  color: var(--wb-text);
+  font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  line-height: 1.6;
+}
+
+/* —— 页面容器（铺满宿主） —— */
+.wbk-page { max-width: 1080px; margin: 0 auto; padding: 20px; }
+
+/* —— 顶部工具栏 —— */
+.wbk-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.wbk-toolbar-title {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wbk-btn {
+  border: 1px solid var(--wb-border);
+  background: var(--wb-surface);
+  color: var(--wb-text);
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+.wbk-btn:hover { border-color: var(--wb-brand); color: var(--wb-brand); }
+.wbk-btn-primary { border-color: var(--wb-brand); color: var(--wb-brand); }
+.wbk-btn-danger { color: var(--wb-error); }
+
+/* —— 页面标题 / 描述 —— */
+.wbk-page-title { margin: 0 0 4px; font-size: 22px; font-weight: 700; }
+.wbk-page-desc { margin: 0 0 16px; color: var(--wb-text-2); font-size: 13px; }
+
+/* —— 列表视图 —— */
+.wbk-list { display: flex; flex-direction: column; gap: 8px; }
+.wbk-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--wb-border);
+  background: var(--wb-surface);
+  border-radius: var(--wb-radius);
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.wbk-item:hover { border-color: var(--wb-brand); }
+.wbk-item-main { flex: 1; min-width: 0; }
+.wbk-item-title { font-weight: 600; margin-bottom: 2px; }
+.wbk-item-desc { color: var(--wb-text-2); font-size: 12px; margin-bottom: 4px; }
+.wbk-item-meta { color: var(--wb-text-2); font-size: 11px; }
+.wbk-item-actions { display: flex; gap: 6px; flex: none; }
+
+.wbk-empty {
+  color: var(--wb-text-2);
+  padding: 40px 8px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.wbk-error { color: var(--wb-error); padding: 8px 0; font-size: 13px; }
+
+/* —— 栅格 —— */
+.wbk-grid { display: grid; gap: 12px; }
+
+.wbk-widget {
+  background: var(--wb-surface);
+  border: 1px solid var(--wb-border);
+  border-radius: var(--wb-radius);
+  padding: 14px 16px;
+  min-width: 0;
+  box-shadow: var(--wb-shadow);
+}
+.wbk-widget-wide { grid-column: 1 / -1 !important; }
+.wbk-widget-title { font-weight: 600; font-size: 14px; margin-bottom: 10px; }
+
+/* —— markdown —— */
+.wbk-md { font-size: 13px; }
+.wbk-md h3 { margin: 0 0 8px; font-size: 15px; }
+.wbk-md h4 { margin: 0 0 6px; font-size: 14px; }
+.wbk-md h5 { margin: 0 0 4px; font-size: 13px; }
+.wbk-md p { margin: 0 0 8px; }
+.wbk-md ul { margin: 0 0 8px; padding-left: 18px; }
+.wbk-md li { margin: 2px 0; }
+.wbk-md code { background: var(--wb-surface-2); border-radius: 4px; padding: 0 4px; font-size: 12px; }
+
+/* —— metrics —— */
+.wbk-metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.wbk-metric { background: var(--wb-surface-2); border-radius: var(--wb-radius); padding: 12px 10px; text-align: center; }
+.wbk-metric-value { display: block; font-size: 20px; font-weight: 700; color: var(--wb-brand); }
+.wbk-metric-label { display: block; margin-top: 4px; font-size: 12px; color: var(--wb-text-2); }
+
+/* —— table —— */
+.wbk-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.wbk-table th, .wbk-table td { border: 1px solid var(--wb-border); padding: 6px 10px; text-align: left; }
+.wbk-table th { background: var(--wb-surface-2); font-weight: 600; }
+
+/* —— text —— */
+.wbk-text { white-space: pre-wrap; font-size: 13px; }
+
+/* —— 内置看板条目 —— */
+.wbk-item-builtin { border-color: var(--wb-brand); }
+.wbk-item-badge {
+  flex: none;
+  align-self: flex-start;
+  background: var(--wb-brand);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-top: 2px;
+}
+
+/* —— Token 消耗面板 —— */
+.wbk-token-cards { margin-bottom: 16px; }
+.wbk-token-table td:first-child { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wbk-token-empty { color: var(--wb-text-2); text-align: center; padding: 20px; }
+.wbk-token-note { color: var(--wb-text-2); font-size: 12px; margin-top: 10px; }
