@@ -1,0 +1,9 @@
+# @dsh-desktop/dsh-workbench bundle patch.
+# Inserted as a profile bundle layer when this package is a `dsh.profile.bundles`
+# member (via `dsh plugin add`). The host half (exports ".") mounts the
+# workbench tools + /api routes; `dsh.client` in package.json serves the browser
+# half (exports "./client") which mounts the sidebar/header entries + overlay.
+# `id` is stable so the user's own cordis.patch.yml can toggle this row.
+- insert:
+    - id: ui-dsh-workbench
+      name: '@dsh-desktop/dsh-workbench'
