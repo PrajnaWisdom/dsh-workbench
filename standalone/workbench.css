@@ -115,12 +115,12 @@ body {
 .wbk-list { display: flex; flex-direction: column; gap: 10px; }
 .wbk-item {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 14px;
   border: 1px solid var(--wb-border);
   background: var(--wb-surface);
   border-radius: var(--wb-radius);
-  padding: 14px 16px;
+  padding: 13px 16px;
   cursor: pointer;
   box-shadow: var(--wb-shadow);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
@@ -130,9 +130,39 @@ body {
   box-shadow: var(--wb-shadow-md);
   transform: translateY(-1px);
 }
+.wbk-item-icon {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, var(--wb-brand), var(--wb-brand-strong));
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(79, 110, 247, 0.35);
+  transition: transform 0.15s ease;
+}
+.wbk-item:hover .wbk-item-icon { transform: scale(1.06); }
 .wbk-item-main { flex: 1; min-width: 0; }
-.wbk-item-title { font-weight: 600; margin-bottom: 3px; font-size: 14px; }
-.wbk-item-desc { color: var(--wb-text-2); font-size: 12px; margin-bottom: 4px; }
+.wbk-item-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wbk-item-desc {
+  color: var(--wb-text-2);
+  font-size: 12px;
+  margin-bottom: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .wbk-item-meta { color: var(--wb-text-3); font-size: 11px; }
 .wbk-item-actions { display: flex; gap: 6px; flex: none; align-items: center; }
 
@@ -206,15 +236,20 @@ body {
 /* —— text —— */
 .wbk-text { white-space: pre-wrap; font-size: 13px; }
 
-/* —— 内置看板条目 —— */
+/* —— 内置看板条目（Token 消耗，暖色系区分） —— */
 .wbk-item-builtin {
-  border-color: var(--wb-brand);
-  box-shadow: inset 3px 0 0 var(--wb-brand), var(--wb-shadow);
+  border-color: var(--wb-border);
+  box-shadow: inset 3px 0 0 #f59e0b, var(--wb-shadow);
+}
+.wbk-item-builtin:hover { border-color: #f59e0b; }
+.wbk-item-builtin .wbk-item-icon {
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
 }
 .wbk-item-badge {
   flex: none;
   align-self: flex-start;
-  background: linear-gradient(135deg, var(--wb-brand), var(--wb-brand-strong));
+  background: linear-gradient(135deg, #f59e0b, #f97316);
   color: #fff;
   font-size: 11px;
   font-weight: 600;

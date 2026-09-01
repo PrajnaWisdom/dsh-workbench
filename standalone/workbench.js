@@ -235,6 +235,11 @@
         var item = document.createElement('div');
         item.className = 'wbk-item' + (isToken ? ' wbk-item-builtin' : '');
 
+        var icon = document.createElement('div');
+        icon.className = 'wbk-item-icon';
+        icon.textContent = isToken ? '⚡' : ((d.title || '看').trim().charAt(0));
+        item.appendChild(icon);
+
         var main = document.createElement('div');
         main.className = 'wbk-item-main';
 
