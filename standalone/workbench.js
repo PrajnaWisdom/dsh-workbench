@@ -3,7 +3,7 @@
  *
  * 两种运行方式：
  * 1) 服务端托管（插件内）：通过 /api/dsh-workbench/* 取真实数据，
- *    支持「列表 → 详情」、返回、在新窗口打开、删除。
+ *    支持「列表 → 详情」、返回、删除、上移/下移、拖拽排序。
  * 2) 本地离线预览（双击 index.html）：若 window.DASHBOARD 有数据
  *    则直接渲染示例，方便不改服务就调样式。
  * ============================================================ */
@@ -160,8 +160,6 @@
       body = renderMetrics(w);
     } else if (w.type === 'table') {
       body = renderTable(w);
-    } else if (w.type === 'gold') {
-      body = renderGoldWidget();
     } else {
       body = document.createElement('div');
       body.className = 'wbk-text';
@@ -470,148 +468,6 @@
     container.appendChild(page);
   }
 
-  // ---------- 实时金价组件（看板内 widget） ----------
-  var goldTimer = null;
-  var goldPoints = []; // [{ t, p }] 本会话内累计的实时价格点
-
-  function drawGoldChart(canvas, points) {
-    if (!points.length || !canvas.clientWidth) return;
-    var g = canvas.getContext('2d');
-    var dpr = window.devicePixelRatio || 1;
-    var w = canvas.clientWidth;
-    var h = canvas.clientHeight;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    g.scale(dpr, dpr);
-    g.clearRect(0, 0, w, h);
-
-    var prices = points.map(function (p) { return p.p; });
-    var min = Math.min.apply(null, prices);
-    var max = Math.max.apply(null, prices);
-    var span = max - min;
-    var pad = span * 0.12 || (max * 0.001) || 1;
-    min -= pad; max += pad;
-
-    var padL = 54, padR = 10, padT = 8, padB = 22;
-    var plotW = w - padL - padR;
-    var plotH = h - padT - padB;
-    var n = points.length;
-
-    function xAt(i) { return n === 1 ? padL + plotW / 2 : padL + (i / (n - 1)) * plotW; }
-    function yAt(v) { return padT + (max - v) / (max - min) * plotH; }
-
-    g.strokeStyle = '#e5e8ef';
-    g.fillStyle = '#8a94a6';
-    g.font = '10px -apple-system, sans-serif';
-    g.lineWidth = 1;
-    g.textAlign = 'right';
-    for (var s = 0; s <= 4; s++) {
-      var v = max - (max - min) * s / 4;
-      var yy = padT + (s / 4) * plotH;
-      g.beginPath(); g.moveTo(padL, yy); g.lineTo(padL + plotW, yy); g.stroke();
-      g.fillText(v.toFixed(1), padL - 6, yy + 3);
-    }
-
-    g.beginPath();
-    points.forEach(function (pt, i) {
-      if (i === 0) g.moveTo(xAt(i), yAt(pt.p));
-      else g.lineTo(xAt(i), yAt(pt.p));
-    });
-    g.lineTo(xAt(n - 1), padT + plotH);
-    g.lineTo(xAt(0), padT + plotH);
-    g.closePath();
-    g.fillStyle = 'rgba(79, 110, 247, 0.12)';
-    g.fill();
-
-    g.beginPath();
-    points.forEach(function (pt, i) {
-      if (i === 0) g.moveTo(xAt(i), yAt(pt.p));
-      else g.lineTo(xAt(i), yAt(pt.p));
-    });
-    g.strokeStyle = '#4f6ef7';
-    g.lineWidth = 2;
-    g.lineJoin = 'round';
-    g.stroke();
-
-    g.beginPath();
-    g.arc(xAt(n - 1), yAt(points[n - 1].p), 3.5, 0, Math.PI * 2);
-    g.fillStyle = '#4f6ef7';
-    g.fill();
-  }
-
-  function renderGoldWidget() {
-    var box = document.createElement('div');
-    box.className = 'wbk-gold';
-
-    var priceEl = document.createElement('div');
-    priceEl.className = 'wbk-gold-price';
-    priceEl.textContent = '加载中…';
-    box.appendChild(priceEl);
-
-    var unitEl = document.createElement('div');
-    unitEl.className = 'wbk-gold-unit';
-    unitEl.textContent = '美元 / 盎司（XAU/USD）';
-    box.appendChild(unitEl);
-
-    var chgEl = document.createElement('div');
-    chgEl.className = 'wbk-gold-change';
-    box.appendChild(chgEl);
-
-    var chartWrap = document.createElement('div');
-    chartWrap.className = 'wbk-gold-chart';
-    var canvas = document.createElement('canvas');
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    chartWrap.appendChild(canvas);
-    box.appendChild(chartWrap);
-
-    var noteEl = document.createElement('div');
-    noteEl.className = 'wbk-gold-note';
-    box.appendChild(noteEl);
-
-    function tick() {
-      api('/api/dsh-workbench/gold').then(function (data) {
-        if (!data || !data.ok) {
-          priceEl.textContent = '获取失败';
-          noteEl.textContent = '金价获取失败（需联网）';
-          return;
-        }
-        var lastPoint = goldPoints[goldPoints.length - 1];
-        if (!lastPoint || lastPoint.p !== data.price) {
-          goldPoints.push({ t: Date.now(), p: data.price });
-        }
-        if (goldPoints.length > 240) goldPoints.shift();
-
-        var prices = goldPoints.map(function (p) { return p.p; });
-        var first = goldPoints[0];
-        var change = data.price - first.p;
-        var changePct = first.p ? (change / first.p) * 100 : 0;
-
-        priceEl.textContent = '$' + Number(data.price).toFixed(2);
-        chgEl.className = 'wbk-gold-change' + (change >= 0 ? ' up' : ' down');
-        chgEl.textContent = (change >= 0 ? '▲ +' : '▼ ') + change.toFixed(2) + ' (' + (changePct >= 0 ? '+' : '') + changePct.toFixed(2) + '%) 自打开以来';
-        noteEl.textContent = '更新于 ' + (data.updatedAt || '—') + '（UTC）· 每 30 秒自动刷新';
-
-        drawGoldChart(canvas, goldPoints);
-      }).catch(function () {
-        priceEl.textContent = '获取失败';
-      });
-    }
-
-    function schedule() {
-      goldTimer = setTimeout(function () {
-        tick();
-        schedule();
-      }, 30000);
-    }
-
-    tick();
-    if (goldTimer) { clearTimeout(goldTimer); goldTimer = null; }
-    schedule();
-
-    return box;
-  }
-
   // ---------- 导航 ----------
   function currentId() {
     return new URLSearchParams(location.search).get('id');
@@ -629,7 +485,6 @@
 
   function refresh() {
     if (!root) return;
-    if (goldTimer) { clearTimeout(goldTimer); goldTimer = null; }
     if (window.DASHBOARD) { renderDashboard(root, window.DASHBOARD); return; } // 离线示例
     var id = currentId();
     if (id === '__tokens__') {
