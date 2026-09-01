@@ -279,3 +279,52 @@ body {
 .wbk-token-table td:first-child { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wbk-token-empty { color: var(--wb-text-2); text-align: center; padding: 24px; }
 .wbk-token-note { color: var(--wb-text-3); font-size: 12px; margin-top: 12px; }
+
+/* —— 黄金实时走势面板 —— */
+.wbk-item-gold { box-shadow: inset 3px 0 0 #d4a017, var(--wb-shadow); }
+.wbk-item-gold:hover { border-color: #d4a017; }
+.wbk-item-gold .wbk-item-icon {
+  background: #d4a017;
+  box-shadow: 0 2px 6px rgba(212, 160, 23, 0.4);
+}
+.wbk-item-gold .wbk-item-badge {
+  background: linear-gradient(135deg, #d4a017, #e0b531);
+}
+
+.wbk-gold-hero {
+  background: var(--wb-surface);
+  border: 1px solid var(--wb-border);
+  border-radius: var(--wb-radius);
+  padding: 20px 22px;
+  margin-bottom: 14px;
+  box-shadow: var(--wb-shadow);
+}
+.wbk-gold-price {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  color: var(--wb-text);
+}
+.wbk-gold-unit { color: var(--wb-text-2); font-size: 13px; margin-top: 4px; }
+.wbk-gold-change { font-size: 13px; font-weight: 600; margin-top: 8px; }
+.wbk-gold-change.up { color: #e03131; }
+.wbk-gold-change.down { color: #2f9e44; }
+
+.wbk-gold-cards { margin-bottom: 14px; }
+.wbk-gold-cards .wbk-metric { background: var(--wb-brand-soft); }
+.wbk-gold-cards .wbk-metric:first-child {
+  background: linear-gradient(135deg, #d4a017, #e0b531);
+}
+.wbk-gold-cards .wbk-metric:first-child .wbk-metric-value { color: #fff; }
+.wbk-gold-cards .wbk-metric:first-child .wbk-metric-label { color: rgba(255, 255, 255, 0.85); }
+
+.wbk-gold-chart {
+  height: 280px;
+  background: var(--wb-surface);
+  border: 1px solid var(--wb-border);
+  border-radius: var(--wb-radius);
+  padding: 10px;
+  box-shadow: var(--wb-shadow);
+}
+.wbk-gold-note { color: var(--wb-text-3); font-size: 12px; margin-top: 12px; }
