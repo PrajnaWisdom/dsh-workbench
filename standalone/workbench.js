@@ -3,7 +3,7 @@
  *
  * 两种运行方式：
  * 1) 服务端托管（插件内）：通过 /api/dsh-workbench/* 取真实数据，
- *    支持「列表 → 详情」、返回、删除、上移/下移排序。
+ *    支持「列表 → 详情」、返回、删除、上移/下移、拖拽排序。
  * 2) 本地离线预览（双击 index.html）：若 window.DASHBOARD 有数据
  *    则直接渲染示例，方便不改服务就调样式。
  * ============================================================ */
@@ -13,6 +13,7 @@
 
   var root = null;
   var IS_OFFLINE = location.protocol === 'file:';
+  var dragId = null;
 
   // ---------- 工具 ----------
   function esc(s) {
@@ -35,6 +36,13 @@
     if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
     if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
     return String(Math.round(n));
+  }
+
+  function fmtDate(ts) {
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '/' + p(d.getMonth() + 1) + '/' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
 
   // ---------- 行内 markdown ----------
@@ -213,6 +221,20 @@
     container.appendChild(page);
   }
 
+  // ---------- SVG 箭头按钮 ----------
+  function arrowBtn(dir, title, disabled, onClick) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'wbk-btn wbk-btn-move';
+    b.title = title;
+    b.disabled = disabled;
+    b.innerHTML = dir === 'up'
+      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>'
+      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+    b.onclick = onClick;
+    return b;
+  }
+
   // ---------- 列表视图 ----------
   function renderList(container, dashboards) {
     container.innerHTML = '';
@@ -230,10 +252,62 @@
       empty.innerHTML = '<p>还没有看板</p><p>在对话里告诉助手「把刚才的分析做成看板保存」，保存后会自动出现在这里。</p>';
       list.appendChild(empty);
     } else {
+      var ids = dashboards.map(function (d) { return d.id; });
+
+      list.addEventListener('dragover', function (e) {
+        if (dragId == null || IS_OFFLINE) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        var target = e.target.closest ? e.target.closest('.wbk-item') : null;
+        var items = list.querySelectorAll('.wbk-item');
+        for (var k = 0; k < items.length; k++) items[k].classList.remove('wbk-insert-before', 'wbk-insert-after');
+        if (!target) return;
+        var rect = target.getBoundingClientRect();
+        var before = (e.clientY - rect.top) < rect.height / 2;
+        target.classList.add(before ? 'wbk-insert-before' : 'wbk-insert-after');
+      });
+
+      list.addEventListener('drop', function (e) {
+        if (dragId == null || IS_OFFLINE) return;
+        e.preventDefault();
+        var items = list.querySelectorAll('.wbk-item');
+        for (var k = 0; k < items.length; k++) items[k].classList.remove('wbk-insert-before', 'wbk-insert-after');
+        var target = e.target.closest ? e.target.closest('.wbk-item') : null;
+        var dragged = dragId;
+        dragId = null;
+        if (!target) return;
+        var targetId = target.getAttribute('data-id');
+        if (!targetId || targetId === dragged) return;
+        var targetIndex = ids.indexOf(targetId);
+        var fromIndex = ids.indexOf(dragged);
+        if (targetIndex < 0 || fromIndex < 0) return;
+        var rect = target.getBoundingClientRect();
+        var before = (e.clientY - rect.top) < rect.height / 2;
+        var targetPos = before ? targetIndex : targetIndex + 1;
+        var to = fromIndex < targetPos ? targetPos - 1 : targetPos;
+        api('/api/dsh-workbench/reorder?id=' + encodeURIComponent(dragged) + '&to=' + to).then(function () { refresh(); }).catch(function () { refresh(); });
+      });
+
       dashboards.forEach(function (d, i) {
         var isToken = d.type === 'token';
         var item = document.createElement('div');
         item.className = 'wbk-item' + (isToken ? ' wbk-item-builtin' : '');
+        item.setAttribute('data-id', d.id);
+        if (!IS_OFFLINE) {
+          item.draggable = true;
+          item.addEventListener('dragstart', function (e) {
+            dragId = d.id;
+            item.classList.add('wbk-item-dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            try { e.dataTransfer.setData('text/plain', d.id); } catch (err) {}
+          });
+          item.addEventListener('dragend', function () {
+            dragId = null;
+            item.classList.remove('wbk-item-dragging');
+            var items = list.querySelectorAll('.wbk-item');
+            for (var k = 0; k < items.length; k++) items[k].classList.remove('wbk-insert-before', 'wbk-insert-after');
+          });
+        }
 
         var icon = document.createElement('div');
         icon.className = 'wbk-item-icon';
@@ -256,8 +330,8 @@
         var meta = document.createElement('div');
         meta.className = 'wbk-item-meta';
         meta.textContent = isToken
-          ? '内置看板 · 输入 / 输出 / 缓存读写'
-          : d.widgetCount + ' 个组件 · ' + new Date(d.createdAt).toLocaleDateString();
+          ? '内置看板 · 实时监控'
+          : '创建于 ' + fmtDate(d.createdAt) + ' · ' + d.widgetCount + ' 个组件';
         main.appendChild(meta);
 
         var actions = document.createElement('div');
@@ -266,22 +340,16 @@
           var isFirst = i === 0;
           var isLast = i === dashboards.length - 1;
 
-          var up = btn('↑', false, function (ev) {
+          var up = arrowBtn('up', '上移', isFirst, function (ev) {
             ev.stopPropagation();
             api('/api/dsh-workbench/move?id=' + encodeURIComponent(d.id) + '&dir=up').then(function () { refresh(); }).catch(function () { refresh(); });
           });
-          up.classList.add('wbk-btn-move');
-          up.title = '上移';
-          up.disabled = isFirst;
           actions.appendChild(up);
 
-          var down = btn('↓', false, function (ev) {
+          var down = arrowBtn('down', '下移', isLast, function (ev) {
             ev.stopPropagation();
             api('/api/dsh-workbench/move?id=' + encodeURIComponent(d.id) + '&dir=down').then(function () { refresh(); }).catch(function () { refresh(); });
           });
-          down.classList.add('wbk-btn-move');
-          down.title = '下移';
-          down.disabled = isLast;
           actions.appendChild(down);
 
           var del = btn('删除', false, function (ev) {
