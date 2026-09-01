@@ -3,7 +3,7 @@
  *
  * 两种运行方式：
  * 1) 服务端托管（插件内）：通过 /api/dsh-workbench/* 取真实数据，
- *    支持「列表 → 详情」、返回、删除、上移/下移、拖拽排序。
+ *    支持「列表 → 详情」、返回、在新窗口打开、删除。
  * 2) 本地离线预览（双击 index.html）：若 window.DASHBOARD 有数据
  *    则直接渲染示例，方便不改服务就调样式。
  * ============================================================ */
@@ -160,6 +160,8 @@
       body = renderMetrics(w);
     } else if (w.type === 'table') {
       body = renderTable(w);
+    } else if (w.type === 'gold') {
+      body = renderGoldWidget();
     } else {
       body = document.createElement('div');
       body.className = 'wbk-text';
@@ -290,10 +292,8 @@
 
       dashboards.forEach(function (d, i) {
         var isToken = d.type === 'token';
-        var isGold = d.type === 'gold';
-        var isBuiltin = isToken || isGold;
         var item = document.createElement('div');
-        item.className = 'wbk-item' + (isBuiltin ? ' wbk-item-builtin' : '') + (isGold ? ' wbk-item-gold' : '');
+        item.className = 'wbk-item' + (isToken ? ' wbk-item-builtin' : '');
         item.setAttribute('data-id', d.id);
         if (!IS_OFFLINE) {
           item.draggable = true;
@@ -313,7 +313,7 @@
 
         var icon = document.createElement('div');
         icon.className = 'wbk-item-icon';
-        icon.textContent = isToken ? '⚡' : isGold ? 'Au' : ((d.title || '看').trim().charAt(0));
+        icon.textContent = isToken ? '⚡' : ((d.title || '看').trim().charAt(0));
         item.appendChild(icon);
 
         var main = document.createElement('div');
@@ -333,9 +333,7 @@
         meta.className = 'wbk-item-meta';
         meta.textContent = isToken
           ? '内置看板 · 实时监控'
-          : isGold
-            ? '内置看板 · 实时行情'
-            : '创建于 ' + fmtDate(d.createdAt) + ' · ' + d.widgetCount + ' 个组件';
+          : '创建于 ' + fmtDate(d.createdAt) + ' · ' + d.widgetCount + ' 个组件';
         main.appendChild(meta);
 
         var actions = document.createElement('div');
@@ -367,7 +365,7 @@
           actions.appendChild(del);
         }
 
-        if (isBuiltin) {
+        if (isToken) {
           var badge = document.createElement('div');
           badge.className = 'wbk-item-badge';
           badge.textContent = '实时';
@@ -472,7 +470,7 @@
     container.appendChild(page);
   }
 
-  // ---------- 黄金实时走势视图（作为内置看板详情） ----------
+  // ---------- 实时金价组件（看板内 widget） ----------
   var goldTimer = null;
   var goldPoints = []; // [{ t, p }] 本会话内累计的实时价格点
 
@@ -541,75 +539,23 @@
     g.fill();
   }
 
-  function renderGold(container, data) {
-    container.innerHTML = '';
-    var page = document.createElement('div');
-    page.className = 'wbk-page';
+  function renderGoldWidget() {
+    var box = document.createElement('div');
+    box.className = 'wbk-gold';
 
-    page.appendChild(toolbar('黄金实时走势', [
-      { label: '← 返回列表', onClick: function () { goList(); } },
-      { label: '立即刷新', primary: true, onClick: function () { refresh(); } },
-    ]));
-
-    if (!data || !data.ok) {
-      var err = document.createElement('div');
-      err.className = 'wbk-error';
-      err.textContent = (data && data.error) || '金价获取失败（需联网）';
-      page.appendChild(err);
-      container.appendChild(page);
-      return;
-    }
-
-    var lastPoint = goldPoints[goldPoints.length - 1];
-    if (!lastPoint || lastPoint.p !== data.price) {
-      goldPoints.push({ t: Date.now(), p: data.price });
-    }
-    if (goldPoints.length > 240) goldPoints.shift();
-
-    var prices = goldPoints.map(function (p) { return p.p; });
-    var first = goldPoints[0];
-    var high = Math.max.apply(null, prices);
-    var low = Math.min.apply(null, prices);
-    var change = data.price - first.p;
-    var changePct = first.p ? (change / first.p) * 100 : 0;
-
-    var hero = document.createElement('div');
-    hero.className = 'wbk-gold-hero';
     var priceEl = document.createElement('div');
     priceEl.className = 'wbk-gold-price';
-    priceEl.textContent = '$' + Number(data.price).toFixed(2);
+    priceEl.textContent = '加载中…';
+    box.appendChild(priceEl);
+
     var unitEl = document.createElement('div');
     unitEl.className = 'wbk-gold-unit';
     unitEl.textContent = '美元 / 盎司（XAU/USD）';
-    hero.appendChild(priceEl);
-    hero.appendChild(unitEl);
+    box.appendChild(unitEl);
 
-    var chg = document.createElement('div');
-    chg.className = 'wbk-gold-change' + (change >= 0 ? ' up' : ' down');
-    chg.textContent = (change >= 0 ? '▲ +' : '▼ ') + change.toFixed(2) + '  (' + (changePct >= 0 ? '+' : '') + changePct.toFixed(2) + '%)  自打开以来';
-    hero.appendChild(chg);
-    page.appendChild(hero);
-
-    var cards = document.createElement('div');
-    cards.className = 'wbk-metrics wbk-gold-cards';
-    [
-      ['最高', high.toFixed(2)],
-      ['最低', low.toFixed(2)],
-      ['开盘（打开时）', first.p.toFixed(2)],
-    ].forEach(function (m) {
-      var card = document.createElement('div');
-      card.className = 'wbk-metric';
-      var v = document.createElement('span');
-      v.className = 'wbk-metric-value';
-      v.textContent = m[1];
-      var l = document.createElement('span');
-      l.className = 'wbk-metric-label';
-      l.textContent = m[0];
-      card.appendChild(v);
-      card.appendChild(l);
-      cards.appendChild(card);
-    });
-    page.appendChild(cards);
+    var chgEl = document.createElement('div');
+    chgEl.className = 'wbk-gold-change';
+    box.appendChild(chgEl);
 
     var chartWrap = document.createElement('div');
     chartWrap.className = 'wbk-gold-chart';
@@ -617,20 +563,53 @@
     canvas.style.width = '100%';
     canvas.style.height = '100%';
     chartWrap.appendChild(canvas);
-    page.appendChild(chartWrap);
-    drawGoldChart(canvas, goldPoints);
+    box.appendChild(chartWrap);
 
-    var note = document.createElement('p');
-    note.className = 'wbk-gold-note';
-    note.textContent = '数据源 api.gold-api.com · 每 30 秒自动刷新 · 更新于 ' + (data.updatedAt || '—') + '（UTC）';
-    page.appendChild(note);
+    var noteEl = document.createElement('div');
+    noteEl.className = 'wbk-gold-note';
+    box.appendChild(noteEl);
 
-    container.appendChild(page);
+    function tick() {
+      api('/api/dsh-workbench/gold').then(function (data) {
+        if (!data || !data.ok) {
+          priceEl.textContent = '获取失败';
+          noteEl.textContent = '金价获取失败（需联网）';
+          return;
+        }
+        var lastPoint = goldPoints[goldPoints.length - 1];
+        if (!lastPoint || lastPoint.p !== data.price) {
+          goldPoints.push({ t: Date.now(), p: data.price });
+        }
+        if (goldPoints.length > 240) goldPoints.shift();
 
-    if (goldTimer) clearTimeout(goldTimer);
-    goldTimer = setTimeout(function () {
-      if (currentId() === '__gold__') refresh();
-    }, 30000);
+        var prices = goldPoints.map(function (p) { return p.p; });
+        var first = goldPoints[0];
+        var change = data.price - first.p;
+        var changePct = first.p ? (change / first.p) * 100 : 0;
+
+        priceEl.textContent = '$' + Number(data.price).toFixed(2);
+        chgEl.className = 'wbk-gold-change' + (change >= 0 ? ' up' : ' down');
+        chgEl.textContent = (change >= 0 ? '▲ +' : '▼ ') + change.toFixed(2) + ' (' + (changePct >= 0 ? '+' : '') + changePct.toFixed(2) + '%) 自打开以来';
+        noteEl.textContent = '更新于 ' + (data.updatedAt || '—') + '（UTC）· 每 30 秒自动刷新';
+
+        drawGoldChart(canvas, goldPoints);
+      }).catch(function () {
+        priceEl.textContent = '获取失败';
+      });
+    }
+
+    function schedule() {
+      goldTimer = setTimeout(function () {
+        tick();
+        schedule();
+      }, 30000);
+    }
+
+    tick();
+    if (goldTimer) { clearTimeout(goldTimer); goldTimer = null; }
+    schedule();
+
+    return box;
   }
 
   // ---------- 导航 ----------
@@ -650,6 +629,7 @@
 
   function refresh() {
     if (!root) return;
+    if (goldTimer) { clearTimeout(goldTimer); goldTimer = null; }
     if (window.DASHBOARD) { renderDashboard(root, window.DASHBOARD); return; } // 离线示例
     var id = currentId();
     if (id === '__tokens__') {
@@ -657,12 +637,6 @@
         renderTokens(root, res);
       }).catch(function () {
         root.innerHTML = '<div class="wbk-page"><div class="wbk-error">Token 数据加载失败——插件新路由尚未生效，请彻底退出并重启应用。</div></div>';
-      });
-    } else if (id === '__gold__') {
-      api('/api/dsh-workbench/gold').then(function (res) {
-        renderGold(root, res);
-      }).catch(function () {
-        root.innerHTML = '<div class="wbk-page"><div class="wbk-error">金价数据加载失败——插件新路由尚未生效，请彻底退出并重启应用。</div></div>';
       });
     } else if (id) {
       api('/api/dsh-workbench/get?id=' + encodeURIComponent(id)).then(function (res) {
