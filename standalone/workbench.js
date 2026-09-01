@@ -290,8 +290,10 @@
 
       dashboards.forEach(function (d, i) {
         var isToken = d.type === 'token';
+        var isGold = d.type === 'gold';
+        var isBuiltin = isToken || isGold;
         var item = document.createElement('div');
-        item.className = 'wbk-item' + (isToken ? ' wbk-item-builtin' : '');
+        item.className = 'wbk-item' + (isBuiltin ? ' wbk-item-builtin' : '') + (isGold ? ' wbk-item-gold' : '');
         item.setAttribute('data-id', d.id);
         if (!IS_OFFLINE) {
           item.draggable = true;
@@ -311,7 +313,7 @@
 
         var icon = document.createElement('div');
         icon.className = 'wbk-item-icon';
-        icon.textContent = isToken ? '⚡' : ((d.title || '看').trim().charAt(0));
+        icon.textContent = isToken ? '⚡' : isGold ? 'Au' : ((d.title || '看').trim().charAt(0));
         item.appendChild(icon);
 
         var main = document.createElement('div');
@@ -331,7 +333,9 @@
         meta.className = 'wbk-item-meta';
         meta.textContent = isToken
           ? '内置看板 · 实时监控'
-          : '创建于 ' + fmtDate(d.createdAt) + ' · ' + d.widgetCount + ' 个组件';
+          : isGold
+            ? '内置看板 · 实时行情'
+            : '创建于 ' + fmtDate(d.createdAt) + ' · ' + d.widgetCount + ' 个组件';
         main.appendChild(meta);
 
         var actions = document.createElement('div');
@@ -363,7 +367,7 @@
           actions.appendChild(del);
         }
 
-        if (isToken) {
+        if (isBuiltin) {
           var badge = document.createElement('div');
           badge.className = 'wbk-item-badge';
           badge.textContent = '实时';
@@ -468,6 +472,167 @@
     container.appendChild(page);
   }
 
+  // ---------- 黄金实时走势视图（作为内置看板详情） ----------
+  var goldTimer = null;
+  var goldPoints = []; // [{ t, p }] 本会话内累计的实时价格点
+
+  function drawGoldChart(canvas, points) {
+    if (!points.length || !canvas.clientWidth) return;
+    var g = canvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+    var w = canvas.clientWidth;
+    var h = canvas.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    g.scale(dpr, dpr);
+    g.clearRect(0, 0, w, h);
+
+    var prices = points.map(function (p) { return p.p; });
+    var min = Math.min.apply(null, prices);
+    var max = Math.max.apply(null, prices);
+    var span = max - min;
+    var pad = span * 0.12 || (max * 0.001) || 1;
+    min -= pad; max += pad;
+
+    var padL = 54, padR = 10, padT = 8, padB = 22;
+    var plotW = w - padL - padR;
+    var plotH = h - padT - padB;
+    var n = points.length;
+
+    function xAt(i) { return n === 1 ? padL + plotW / 2 : padL + (i / (n - 1)) * plotW; }
+    function yAt(v) { return padT + (max - v) / (max - min) * plotH; }
+
+    g.strokeStyle = '#e5e8ef';
+    g.fillStyle = '#8a94a6';
+    g.font = '10px -apple-system, sans-serif';
+    g.lineWidth = 1;
+    g.textAlign = 'right';
+    for (var s = 0; s <= 4; s++) {
+      var v = max - (max - min) * s / 4;
+      var yy = padT + (s / 4) * plotH;
+      g.beginPath(); g.moveTo(padL, yy); g.lineTo(padL + plotW, yy); g.stroke();
+      g.fillText(v.toFixed(1), padL - 6, yy + 3);
+    }
+
+    g.beginPath();
+    points.forEach(function (pt, i) {
+      if (i === 0) g.moveTo(xAt(i), yAt(pt.p));
+      else g.lineTo(xAt(i), yAt(pt.p));
+    });
+    g.lineTo(xAt(n - 1), padT + plotH);
+    g.lineTo(xAt(0), padT + plotH);
+    g.closePath();
+    g.fillStyle = 'rgba(79, 110, 247, 0.12)';
+    g.fill();
+
+    g.beginPath();
+    points.forEach(function (pt, i) {
+      if (i === 0) g.moveTo(xAt(i), yAt(pt.p));
+      else g.lineTo(xAt(i), yAt(pt.p));
+    });
+    g.strokeStyle = '#4f6ef7';
+    g.lineWidth = 2;
+    g.lineJoin = 'round';
+    g.stroke();
+
+    g.beginPath();
+    g.arc(xAt(n - 1), yAt(points[n - 1].p), 3.5, 0, Math.PI * 2);
+    g.fillStyle = '#4f6ef7';
+    g.fill();
+  }
+
+  function renderGold(container, data) {
+    container.innerHTML = '';
+    var page = document.createElement('div');
+    page.className = 'wbk-page';
+
+    page.appendChild(toolbar('黄金实时走势', [
+      { label: '← 返回列表', onClick: function () { goList(); } },
+      { label: '立即刷新', primary: true, onClick: function () { refresh(); } },
+    ]));
+
+    if (!data || !data.ok) {
+      var err = document.createElement('div');
+      err.className = 'wbk-error';
+      err.textContent = (data && data.error) || '金价获取失败（需联网）';
+      page.appendChild(err);
+      container.appendChild(page);
+      return;
+    }
+
+    var lastPoint = goldPoints[goldPoints.length - 1];
+    if (!lastPoint || lastPoint.p !== data.price) {
+      goldPoints.push({ t: Date.now(), p: data.price });
+    }
+    if (goldPoints.length > 240) goldPoints.shift();
+
+    var prices = goldPoints.map(function (p) { return p.p; });
+    var first = goldPoints[0];
+    var high = Math.max.apply(null, prices);
+    var low = Math.min.apply(null, prices);
+    var change = data.price - first.p;
+    var changePct = first.p ? (change / first.p) * 100 : 0;
+
+    var hero = document.createElement('div');
+    hero.className = 'wbk-gold-hero';
+    var priceEl = document.createElement('div');
+    priceEl.className = 'wbk-gold-price';
+    priceEl.textContent = '$' + Number(data.price).toFixed(2);
+    var unitEl = document.createElement('div');
+    unitEl.className = 'wbk-gold-unit';
+    unitEl.textContent = '美元 / 盎司（XAU/USD）';
+    hero.appendChild(priceEl);
+    hero.appendChild(unitEl);
+
+    var chg = document.createElement('div');
+    chg.className = 'wbk-gold-change' + (change >= 0 ? ' up' : ' down');
+    chg.textContent = (change >= 0 ? '▲ +' : '▼ ') + change.toFixed(2) + '  (' + (changePct >= 0 ? '+' : '') + changePct.toFixed(2) + '%)  自打开以来';
+    hero.appendChild(chg);
+    page.appendChild(hero);
+
+    var cards = document.createElement('div');
+    cards.className = 'wbk-metrics wbk-gold-cards';
+    [
+      ['最高', high.toFixed(2)],
+      ['最低', low.toFixed(2)],
+      ['开盘（打开时）', first.p.toFixed(2)],
+    ].forEach(function (m) {
+      var card = document.createElement('div');
+      card.className = 'wbk-metric';
+      var v = document.createElement('span');
+      v.className = 'wbk-metric-value';
+      v.textContent = m[1];
+      var l = document.createElement('span');
+      l.className = 'wbk-metric-label';
+      l.textContent = m[0];
+      card.appendChild(v);
+      card.appendChild(l);
+      cards.appendChild(card);
+    });
+    page.appendChild(cards);
+
+    var chartWrap = document.createElement('div');
+    chartWrap.className = 'wbk-gold-chart';
+    var canvas = document.createElement('canvas');
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    chartWrap.appendChild(canvas);
+    page.appendChild(chartWrap);
+    drawGoldChart(canvas, goldPoints);
+
+    var note = document.createElement('p');
+    note.className = 'wbk-gold-note';
+    note.textContent = '数据源 api.gold-api.com · 每 30 秒自动刷新 · 更新于 ' + (data.updatedAt || '—') + '（UTC）';
+    page.appendChild(note);
+
+    container.appendChild(page);
+
+    if (goldTimer) clearTimeout(goldTimer);
+    goldTimer = setTimeout(function () {
+      if (currentId() === '__gold__') refresh();
+    }, 30000);
+  }
+
   // ---------- 导航 ----------
   function currentId() {
     return new URLSearchParams(location.search).get('id');
@@ -492,6 +657,12 @@
         renderTokens(root, res);
       }).catch(function () {
         root.innerHTML = '<div class="wbk-page"><div class="wbk-error">Token 数据加载失败——插件新路由尚未生效，请彻底退出并重启应用。</div></div>';
+      });
+    } else if (id === '__gold__') {
+      api('/api/dsh-workbench/gold').then(function (res) {
+        renderGold(root, res);
+      }).catch(function () {
+        root.innerHTML = '<div class="wbk-page"><div class="wbk-error">金价数据加载失败——插件新路由尚未生效，请彻底退出并重启应用。</div></div>';
       });
     } else if (id) {
       api('/api/dsh-workbench/get?id=' + encodeURIComponent(id)).then(function (res) {
